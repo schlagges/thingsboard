@@ -42,14 +42,11 @@
     <div class="flex flex-col gap-2">
       <div class="meter-row" *ngFor="let meter of formData.meters; let i = index; trackBy: trackByIndex">
         <div class="meter-summary">
-          <div class="mat-body-2">{{ meter.name }}</div>
-          <div class="mat-caption">{{ meter.meterId }} · {{ meter.medium }}</div>
-          <div class="mat-caption">
-            {{ meter.startDate | date:'dd.MM.yyyy' }}<span *ngIf="meter.endDate"> – {{ meter.endDate | date:'dd.MM.yyyy' }}</span>
-          </div>
+          <div class="mat-body-2">{{ meter.meterId }} · {{ meter.medium }}</div>
+          <div class="mat-caption">{{ meter.startDate | date:'dd.MM.yyyy' }}</div>
         </div>
-        <button type="button" mat-button color="primary" (click)="openMeterDialog(i, $event)">
-          Bearbeiten
+        <button type="button" mat-icon-button color="primary" (click)="openMeterDialog(i, $event)" aria-label="Zähler bearbeiten">
+          <mat-icon>edit</mat-icon>
         </button>
         <button type="button" mat-icon-button color="warn" (click)="removeMeter(i)" aria-label="Zähler löschen">
           <mat-icon>delete</mat-icon>
@@ -58,7 +55,7 @@
     </div>
 
     <div class="flex flex-row flex-wrap gap-2 mt-2">
-      <button type="button" mat-raised-button color="primary"
+      <button type="button" mat-stroked-button color="primary"
               (click)="openMeterDialog(null, $event)">
         Zähler hinzufügen
       </button>
@@ -147,18 +144,7 @@ self.onInit = function() {
             firstName: '',
             lastName: '',
             email: '',
-            meters: [
-                {
-                    name: '',
-                    meterId: '',
-                    medium: '',
-                    mountingAddress: '',
-                    mountingLocation: '',
-                    melo: '',
-                    startDate: null,
-                    endDate: null
-                }
-            ]
+            meters: []
         };
     }
 
@@ -168,9 +154,6 @@ self.onInit = function() {
 
     self.ctx.$scope.removeMeter = function(index) {
         self.ctx.$scope.formData.meters.splice(index, 1);
-        if (!self.ctx.$scope.formData.meters.length) {
-            self.ctx.$scope.formData.meters.push(createEmptyMeter());
-        }
     };
 
     self.ctx.$scope.trackByIndex = function(index) {
@@ -282,6 +265,8 @@ self.onInit = function() {
             'TELEMETRY',
             payload
         ).subscribe(function () {
+            createUserGroups();
+            createUserDevices();
             self.ctx.showSuccessToast('Gespeichert', 3000, 'top', 'center', self.ctx.$scope.toastTargetId, true);
             self.ctx.$scope.formSavedPayload = JSON.stringify(self.ctx.$scope.formData, null, 2);
             self.ctx.detectChanges();
@@ -327,6 +312,40 @@ self.onInit = function() {
             startDate: meter.startDate ? new Date(meter.startDate) : null,
             endDate: meter.endDate ? new Date(meter.endDate) : null
         };
+    }
+
+    function createUserGroups() {
+        var groupName = self.ctx.$scope.formData.lastName + ', ' + self.ctx.$scope.formData.firstName;
+        self.ctx.http.post('/api/entityGroup', { type: 'USER', name: groupName }).subscribe();
+        self.ctx.http.post('/api/entityGroup', { type: 'ENTITY_VIEW', name: groupName }).subscribe();
+    }
+
+    function createUserDevices() {
+        self.ctx.$scope.formData.meters.forEach(function (meter) {
+            var deviceName = (meter.meterId || '').toUpperCase();
+            if (!deviceName) {
+                return;
+            }
+            self.ctx.http.post('/api/device', { name: deviceName, type: '@CMS/Cosem' }).subscribe(function (device) {
+                var deviceId = device.id && device.id.id ? device.id.id : device.id;
+                var entityId = {
+                    entityType: 'DEVICE',
+                    id: deviceId
+                };
+                var sharedAttributes = [
+                    { key: '_meterid', value: meter.meterId },
+                    { key: '_medium', value: meter.medium },
+                    { key: '_location', value: meter.mountingAddress },
+                    { key: '_mounting', value: meter.mountingLocation },
+                    { key: '_melo', value: meter.melo }
+                ];
+                var serverAttributes = [
+                    { key: 'inactivityTimeout', value: 172800000 }
+                ];
+                self.ctx.attributeService.saveEntityAttributes(entityId, 'SHARED_SCOPE', sharedAttributes).subscribe();
+                self.ctx.attributeService.saveEntityAttributes(entityId, 'SERVER_SCOPE', serverAttributes).subscribe();
+            });
+        });
     }
 };
 {:copy-code}
