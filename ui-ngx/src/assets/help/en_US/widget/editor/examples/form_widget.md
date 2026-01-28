@@ -41,9 +41,10 @@
     <div class="mat-title">Zähler</div>
     <div class="flex flex-col gap-2">
       <div class="meter-row" *ngFor="let meter of formData.meters; let i = index; trackBy: trackByIndex">
-        <div class="meter-summary">
-          <div class="mat-body-2">{{ meter.meterId }} · {{ meter.medium }}</div>
-          <div class="mat-caption">{{ meter.startDate | date:'dd.MM.yyyy' }}</div>
+        <div class="meter-summary-line mat-body-2">
+          <span class="meter-col meter-col-id">{{ meter.meterId }}</span>
+          <span class="meter-col meter-col-medium">{{ meter.medium }}</span>
+          <span class="meter-col meter-col-date">{{ meter.startDate | date:'dd.MM.yyyy' }}</span>
         </div>
         <button type="button" mat-icon-button color="primary" (click)="openMeterDialog(i, $event)" aria-label="Zähler bearbeiten">
           <mat-icon>edit</mat-icon>
@@ -267,6 +268,7 @@ self.onInit = function() {
         ).subscribe(function () {
             createUserGroups();
             createUserDevices();
+            createUserAccount();
             self.ctx.showSuccessToast('Gespeichert', 3000, 'top', 'center', self.ctx.$scope.toastTargetId, true);
             self.ctx.$scope.formSavedPayload = JSON.stringify(self.ctx.$scope.formData, null, 2);
             self.ctx.detectChanges();
@@ -316,8 +318,10 @@ self.onInit = function() {
 
     function createUserGroups() {
         var groupName = self.ctx.$scope.formData.lastName + ', ' + self.ctx.$scope.formData.firstName;
-        self.ctx.http.post('/api/entityGroup', { type: 'USER', name: groupName }).subscribe();
-        self.ctx.http.post('/api/entityGroup', { type: 'ENTITY_VIEW', name: groupName }).subscribe();
+        saveEntityGroup({ type: 'USER', name: groupName }).subscribe(function (userGroup) {
+            saveEntityGroupPermission(userGroup && userGroup.id ? userGroup.id.id : null);
+        });
+        saveEntityGroup({ type: 'ENTITY_VIEW', name: groupName }).subscribe();
     }
 
     function createUserDevices() {
@@ -326,7 +330,7 @@ self.onInit = function() {
             if (!deviceName) {
                 return;
             }
-            self.ctx.http.post('/api/device', { name: deviceName, type: '@CMS/Cosem' }).subscribe(function (device) {
+            self.ctx.deviceService.saveDevice({ name: deviceName, type: '@CMS/Cosem' }).subscribe(function (device) {
                 var deviceId = device.id && device.id.id ? device.id.id : device.id;
                 var entityId = {
                     entityType: 'DEVICE',
@@ -344,8 +348,53 @@ self.onInit = function() {
                 ];
                 self.ctx.attributeService.saveEntityAttributes(entityId, 'SHARED_SCOPE', sharedAttributes).subscribe();
                 self.ctx.attributeService.saveEntityAttributes(entityId, 'SERVER_SCOPE', serverAttributes).subscribe();
+                linkDeviceToBtcAsset(entityId);
             });
         });
+    }
+
+    function linkDeviceToBtcAsset(deviceEntityId) {
+        var btcAssetId = {
+            entityType: 'ASSET',
+            id: 'b2a50670-832a-11f0-81aa-a7e4f7445338'
+        };
+        self.ctx.entityRelationService.saveRelation({
+            from: deviceEntityId,
+            to: btcAssetId,
+            type: 'Contains',
+            typeGroup: 'COMMON'
+        }).subscribe();
+    }
+
+    function saveEntityGroup(group) {
+        if (self.ctx.entityGroupService && self.ctx.entityGroupService.saveEntityGroup) {
+            return self.ctx.entityGroupService.saveEntityGroup(group);
+        }
+        return self.ctx.http.post('/api/entityGroup', group);
+    }
+
+    function saveEntityGroupPermission(userGroupId) {
+        if (!userGroupId) {
+            return;
+        }
+        var roleId = '0b0ea2b0-36e3-11f0-9416-e1bdecd1c374';
+        var body = {
+            entityGroupId: userGroupId,
+            roleId: roleId
+        };
+        self.ctx.http.post('/api/entityGroup/permissions', body).subscribe();
+    }
+
+    function createUserAccount() {
+        self.ctx.userService.saveUser({
+            email: self.ctx.$scope.formData.email,
+            authority: 'CUSTOMER_USER',
+            firstName: self.ctx.$scope.formData.firstName,
+            lastName: self.ctx.$scope.formData.lastName,
+            customMenuId: {
+                id: '7728f1d0-36e8-11f0-9416-e1bdecd1c374'
+            }
+        }).subscribe();
     }
 };
 {:copy-code}
@@ -364,8 +413,14 @@ self.onInit = function() {
   flex: 1 1 0;
 }
 
-.meter-summary {
+.meter-summary-line {
+  display: flex;
   flex: 1 1 auto;
+  gap: 12px;
+}
+
+.meter-col {
+  min-width: 120px;
 }
 
 .meter-dialog-backdrop {
