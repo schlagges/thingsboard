@@ -59,9 +59,9 @@
       </button>
     </div>
 
-    <div class="mt-2" *ngIf="formSavedPayload">
-      <div class="mat-subheading-2">Aktueller Formular-JSON</div>
-      <pre class="mat-body-2">{{ formSavedPayload }}</pre>
+    <div class="mt-2" *ngIf="formReport.length">
+      <div class="mat-subheading-2">Statusbericht</div>
+      <pre class="mat-body-2">{{ formReport.join('\n') }}</pre>
     </div>
   </div>
 

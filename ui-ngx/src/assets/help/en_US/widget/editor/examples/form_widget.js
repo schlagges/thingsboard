@@ -21,6 +21,7 @@ self.onInit = function() {
 
     self.ctx.$scope.formData = emptyFormData();
     self.ctx.$scope.formSavedPayload = '';
+    self.ctx.$scope.formReport = [];
     self.ctx.$scope.toastTargetId = self.ctx.toastTargetId;
 
     self.ctx.$scope.removeMeter = function(index) {
@@ -60,6 +61,7 @@ self.onInit = function() {
         }
         self.ctx.$scope.formData = emptyFormData();
         self.ctx.$scope.formSavedPayload = '';
+        self.ctx.$scope.formReport = [];
         self.ctx.detectChanges();
     };
 
@@ -130,6 +132,7 @@ self.onInit = function() {
                 }
             }
         ];
+        self.ctx.$scope.formReport = [];
         self.ctx.attributeService.saveEntityTimeseries(
             self.ctx.defaultSubscription.targetEntityId,
             'TELEMETRY',
@@ -142,7 +145,6 @@ self.onInit = function() {
             rx.switchMap((groupContext) => createUserDevices$(groupContext))
         ).subscribe(() => {
             self.ctx.showSuccessToast('Gespeichert', 3000, 'top', 'center', self.ctx.$scope.toastTargetId, true);
-            self.ctx.$scope.formSavedPayload = JSON.stringify(self.ctx.$scope.formData, null, 2);
             self.ctx.detectChanges();
         }, () => {
             if (!saveFailed) {
@@ -196,6 +198,7 @@ self.onInit = function() {
         }).pipe(
             rx.switchMap((entityViewGroup) => {
                 createdEntities.entityViewGroupId = entityViewGroup && entityViewGroup.id ? entityViewGroup.id.id : null;
+                pushReport('EntityView Group erstellt: ' + groupName);
                 return saveEntityGroup({
                     type: 'USER',
                     name: groupName,
@@ -203,14 +206,15 @@ self.onInit = function() {
                 }).pipe(
                     rx.switchMap((userGroup) => {
                         createdEntities.userGroupId = userGroup && userGroup.id ? userGroup.id.id : null;
+                        pushReport('User Group erstellt: ' + groupName);
                         return shareEntityGroupToUserGroup$(
                             createdEntities.entityViewGroupId,
                             createdEntities.userGroupId
                         ).pipe(
-                        rx.map(() => ({
-                            entityViewGroupId: createdEntities.entityViewGroupId,
-                            userGroupId: createdEntities.userGroupId
-                        }))
+                            rx.map(() => ({
+                                entityViewGroupId: createdEntities.entityViewGroupId,
+                                userGroupId: createdEntities.userGroupId
+                            }))
                         );
                     })
                 );
@@ -257,6 +261,7 @@ self.onInit = function() {
             rx.switchMap((device) => {
                 var deviceId = device.id && device.id.id ? device.id.id : device.id;
                 createdEntities.deviceIds.push(deviceId);
+                pushReport('Device erstellt: ' + deviceName);
                 var entityId = {
                     entityType: 'DEVICE',
                     id: deviceId
@@ -317,6 +322,7 @@ self.onInit = function() {
                 if (entityView && entityView.id) {
                     createdEntities.entityViewIds.push(entityView.id.id || entityView.id);
                 }
+                pushReport('EntityView erstellt: ' + deviceContext.deviceName);
                 return entityView;
             }),
             rx.catchError((error) => {
@@ -337,6 +343,10 @@ self.onInit = function() {
             type: 'Contains',
             typeGroup: 'COMMON'
         }).pipe(
+            rx.map((relation) => {
+                pushReport('BTC-Asset Beziehung erstellt.');
+                return relation;
+            }),
             rx.catchError((error) => {
                 handleSaveError('Fehler beim Erstellen der BTC-Asset Beziehung.');
                 return rx.throwError(() => error);
@@ -358,6 +368,10 @@ self.onInit = function() {
         var roleId = '0b0ea2b0-36e3-11f0-9416-e1bdecd1c374';
         var url = '/api/entityGroup/' + entityViewGroupId + '/' + userGroupId + '/' + roleId + '/share';
         return self.ctx.http.post(url, null).pipe(
+            rx.map((result) => {
+                pushReport('EntityView Group geteilt.');
+                return result;
+            }),
             rx.catchError((error) => {
                 handleSaveError('Fehler beim Teilen der Entityview Group.');
                 return rx.throwError(() => error);
@@ -383,13 +397,14 @@ self.onInit = function() {
             }
         }, true, {
             queryParams: {
-                userGroupId: groupContext ? groupContext.userGroupId : null
+                userGroupId: groupContext && groupContext.userGroupId ? groupContext.userGroupId.id || groupContext.userGroupId : null
             }
         }).pipe(
             rx.map((user) => {
                 if (user && user.id) {
                     createdEntities.userId = user.id.id || user.id;
                 }
+                pushReport('User erstellt: ' + self.ctx.$scope.formData.email);
                 return user;
             }),
             rx.catchError((error) => {
@@ -403,7 +418,7 @@ self.onInit = function() {
 
     function handleSaveError(message) {
         saveFailed = true;
-        self.ctx.$scope.formSavedPayload = message;
+        pushReport('Fehler: ' + message);
         self.ctx.detectChanges();
         if (!rollbackRunning) {
             rollbackRunning = true;
@@ -411,6 +426,10 @@ self.onInit = function() {
                 rollbackRunning = false;
             });
         }
+    }
+
+    function pushReport(message) {
+        self.ctx.$scope.formReport.push(message);
     }
 
     function rollbackEntities$() {
