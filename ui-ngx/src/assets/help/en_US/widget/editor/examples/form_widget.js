@@ -381,7 +381,7 @@ self.onInit = function() {
             customMenuId: {
                 id: '7728f1d0-36e8-11f0-9416-e1bdecd1c374'
             }
-        }, {
+        }, true, {
             queryParams: {
                 userGroupId: groupContext ? groupContext.userGroupId : null
             }
