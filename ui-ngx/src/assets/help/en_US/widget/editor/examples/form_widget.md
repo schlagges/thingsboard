@@ -266,15 +266,17 @@ self.onInit = function() {
             'TELEMETRY',
             payload
         ).subscribe(function () {
-            createUserGroups();
-            createUserDevices();
-            createUserAccount();
-            self.ctx.showSuccessToast('Gespeichert', 3000, 'top', 'center', self.ctx.$scope.toastTargetId, true);
-            self.ctx.$scope.formSavedPayload = JSON.stringify(self.ctx.$scope.formData, null, 2);
-            self.ctx.detectChanges();
+            createUserGroups(function () {
+                createUserAccount(function () {
+                    createUserDevices(function () {
+                        self.ctx.showSuccessToast('Gespeichert', 3000, 'top', 'center', self.ctx.$scope.toastTargetId, true);
+                        self.ctx.$scope.formSavedPayload = JSON.stringify(self.ctx.$scope.formData, null, 2);
+                        self.ctx.detectChanges();
+                    });
+                });
+            });
         }, function () {
-            self.ctx.$scope.formSavedPayload = 'Fehler beim Speichern der Telemetrie.';
-            self.ctx.detectChanges();
+            handleSaveError('Fehler beim Speichern der Telemetrie.');
         });
     };
 
@@ -316,18 +318,42 @@ self.onInit = function() {
         };
     }
 
-    function createUserGroups() {
+    function createUserGroups(done) {
         var groupName = self.ctx.$scope.formData.lastName + ', ' + self.ctx.$scope.formData.firstName;
         saveEntityGroup({ type: 'USER', name: groupName }).subscribe(function (userGroup) {
-            saveEntityGroupPermission(userGroup && userGroup.id ? userGroup.id.id : null);
+            var userGroupId = userGroup && userGroup.id ? userGroup.id.id : null;
+            saveEntityGroupPermission(userGroupId, function () {
+                saveEntityGroup({ type: 'ENTITY_VIEW', name: groupName }).subscribe(function () {
+                    if (done) {
+                        done();
+                    }
+                }, function () {
+                    handleSaveError('Fehler beim Anlegen der Entityview Group.');
+                });
+            });
+        }, function () {
+            handleSaveError('Fehler beim Anlegen der User Group.');
         });
-        saveEntityGroup({ type: 'ENTITY_VIEW', name: groupName }).subscribe();
     }
 
-    function createUserDevices() {
-        self.ctx.$scope.formData.meters.forEach(function (meter) {
+    function createUserDevices(done) {
+        var meters = self.ctx.$scope.formData.meters;
+        if (!meters.length) {
+            if (done) {
+                done();
+            }
+            return;
+        }
+        var pending = meters.length;
+        var completed = false;
+        meters.forEach(function (meter) {
             var deviceName = (meter.meterId || '').toUpperCase();
             if (!deviceName) {
+                pending -= 1;
+                if (!pending && done && !completed) {
+                    completed = true;
+                    done();
+                }
                 return;
             }
             self.ctx.deviceService.saveDevice({ name: deviceName, type: '@CMS/Cosem' }).subscribe(function (device) {
@@ -346,14 +372,28 @@ self.onInit = function() {
                 var serverAttributes = [
                     { key: 'inactivityTimeout', value: 172800000 }
                 ];
-                self.ctx.attributeService.saveEntityAttributes(entityId, 'SHARED_SCOPE', sharedAttributes).subscribe();
-                self.ctx.attributeService.saveEntityAttributes(entityId, 'SERVER_SCOPE', serverAttributes).subscribe();
-                linkDeviceToBtcAsset(entityId);
+                self.ctx.attributeService.saveEntityAttributes(entityId, 'SHARED_SCOPE', sharedAttributes).subscribe(function () {
+                    self.ctx.attributeService.saveEntityAttributes(entityId, 'SERVER_SCOPE', serverAttributes).subscribe(function () {
+                        linkDeviceToBtcAsset(entityId, function () {
+                            pending -= 1;
+                            if (!pending && done && !completed) {
+                                completed = true;
+                                done();
+                            }
+                        });
+                    }, function () {
+                        handleSaveError('Fehler beim Schreiben der Server-Attribute.');
+                    });
+                }, function () {
+                    handleSaveError('Fehler beim Schreiben der Shared-Attribute.');
+                });
+            }, function () {
+                handleSaveError('Fehler beim Anlegen des Devices.');
             });
         });
     }
 
-    function linkDeviceToBtcAsset(deviceEntityId) {
+    function linkDeviceToBtcAsset(deviceEntityId, done) {
         var btcAssetId = {
             entityType: 'ASSET',
             id: 'b2a50670-832a-11f0-81aa-a7e4f7445338'
@@ -363,7 +403,13 @@ self.onInit = function() {
             to: btcAssetId,
             type: 'Contains',
             typeGroup: 'COMMON'
-        }).subscribe();
+        }).subscribe(function () {
+            if (done) {
+                done();
+            }
+        }, function () {
+            handleSaveError('Fehler beim Erstellen der BTC-Asset Beziehung.');
+        });
     }
 
     function saveEntityGroup(group) {
@@ -373,8 +419,11 @@ self.onInit = function() {
         return self.ctx.http.post('/api/entityGroup', group);
     }
 
-    function saveEntityGroupPermission(userGroupId) {
+    function saveEntityGroupPermission(userGroupId, done) {
         if (!userGroupId) {
+            if (done) {
+                done();
+            }
             return;
         }
         var roleId = '0b0ea2b0-36e3-11f0-9416-e1bdecd1c374';
@@ -382,10 +431,16 @@ self.onInit = function() {
             entityGroupId: userGroupId,
             roleId: roleId
         };
-        self.ctx.http.post('/api/entityGroup/permissions', body).subscribe();
+        self.ctx.http.post('/api/entityGroup/permissions', body).subscribe(function () {
+            if (done) {
+                done();
+            }
+        }, function () {
+            handleSaveError('Fehler beim Setzen der Gruppenberechtigung.');
+        });
     }
 
-    function createUserAccount() {
+    function createUserAccount(done) {
         self.ctx.userService.saveUser({
             email: self.ctx.$scope.formData.email,
             authority: 'CUSTOMER_USER',
@@ -394,7 +449,18 @@ self.onInit = function() {
             customMenuId: {
                 id: '7728f1d0-36e8-11f0-9416-e1bdecd1c374'
             }
-        }).subscribe();
+        }).subscribe(function () {
+            if (done) {
+                done();
+            }
+        }, function () {
+            handleSaveError('Fehler beim Anlegen des Users.');
+        });
+    }
+
+    function handleSaveError(message) {
+        self.ctx.$scope.formSavedPayload = message;
+        self.ctx.detectChanges();
     }
 };
 {:copy-code}
