@@ -70,11 +70,6 @@
     <div class="mat-title">{{ meterDialogTitle }}</div>
     <div class="flex flex-col gap-4 mt-2">
       <mat-form-field class="mat-block">
-        <mat-label>Zähler-Name</mat-label>
-        <input matInput required name="dialogName" #dialogNameField="ngModel" [(ngModel)]="meterDraft.name" />
-        <mat-error *ngIf="dialogNameField.hasError('required')">Pflichtfeld</mat-error>
-      </mat-form-field>
-      <mat-form-field class="mat-block">
         <mat-label>Zählernummer</mat-label>
         <input matInput required maxlength="14" name="dialogMeterId" #dialogMeterIdField="ngModel"
                [(ngModel)]="meterDraft.meterId" />
