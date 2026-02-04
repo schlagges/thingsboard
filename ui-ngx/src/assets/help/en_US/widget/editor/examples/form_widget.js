@@ -1,5 +1,6 @@
 self.onInit = function() {
     var rx = self.ctx.rxjs;
+    var saveFailed = false;
 
     function emptyFormData() {
         return {
@@ -135,7 +136,9 @@ self.onInit = function() {
             self.ctx.$scope.formSavedPayload = JSON.stringify(self.ctx.$scope.formData, null, 2);
             self.ctx.detectChanges();
         }, () => {
-            handleSaveError('Fehler beim Speichern der Telemetrie.');
+            if (!saveFailed) {
+                handleSaveError('Fehler beim Speichern der Telemetrie.');
+            }
         });
     };
 
@@ -185,9 +188,9 @@ self.onInit = function() {
                 return saveEntityGroupPermission$(userGroupId);
             }),
             rx.switchMap(() => saveEntityGroup({ type: 'ENTITY_VIEW', name: groupName })),
-            rx.catchError(() => {
+            rx.catchError((error) => {
                 handleSaveError('Fehler beim Anlegen der User Group.');
-                return rx.EMPTY;
+                return rx.throwError(() => error);
             })
         );
     }
@@ -200,9 +203,9 @@ self.onInit = function() {
         return rx.from(meters).pipe(
             rx.concatMap((meter) => createDeviceForMeter$(meter)),
             rx.toArray(),
-            rx.catchError(() => {
+            rx.catchError((error) => {
                 handleSaveError('Fehler beim Anlegen der Devices.');
-                return rx.EMPTY;
+                return rx.throwError(() => error);
             })
         );
     }
@@ -234,9 +237,9 @@ self.onInit = function() {
                     rx.switchMap(() => linkDeviceToBtcAsset$(entityId))
                 );
             }),
-            rx.catchError(() => {
+            rx.catchError((error) => {
                 handleSaveError('Fehler beim Anlegen des Devices.');
-                return rx.EMPTY;
+                return rx.throwError(() => error);
             })
         );
     }
@@ -252,9 +255,9 @@ self.onInit = function() {
             type: 'Contains',
             typeGroup: 'COMMON'
         }).pipe(
-            rx.catchError(() => {
+            rx.catchError((error) => {
                 handleSaveError('Fehler beim Erstellen der BTC-Asset Beziehung.');
-                return rx.EMPTY;
+                return rx.throwError(() => error);
             })
         );
     }
@@ -276,9 +279,9 @@ self.onInit = function() {
             roleId: roleId
         };
         return self.ctx.http.post('/api/entityGroup/permissions', body).pipe(
-            rx.catchError(() => {
+            rx.catchError((error) => {
                 handleSaveError('Fehler beim Setzen der Gruppenberechtigung.');
-                return rx.EMPTY;
+                return rx.throwError(() => error);
             })
         );
     }
@@ -293,14 +296,15 @@ self.onInit = function() {
                 id: '7728f1d0-36e8-11f0-9416-e1bdecd1c374'
             }
         }).pipe(
-            rx.catchError(() => {
+            rx.catchError((error) => {
                 handleSaveError('Fehler beim Anlegen des Users.');
-                return rx.EMPTY;
+                return rx.throwError(() => error);
             })
         );
     }
 
     function handleSaveError(message) {
+        saveFailed = true;
         self.ctx.$scope.formSavedPayload = message;
         self.ctx.detectChanges();
     }
