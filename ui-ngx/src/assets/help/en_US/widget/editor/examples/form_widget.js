@@ -136,10 +136,8 @@ self.onInit = function() {
             payload
         ).pipe(
             rx.switchMap(() => createUserGroups$()),
-            rx.switchMap((groupContext) => createUserAccount$().pipe(
-                rx.switchMap((user) => addUserToGroup$(groupContext, user).pipe(
-                    rx.map(() => groupContext)
-                ))
+            rx.switchMap((groupContext) => createUserAccount$(groupContext).pipe(
+                rx.map(() => groupContext)
             )),
             rx.switchMap((groupContext) => createUserDevices$(groupContext))
         ).subscribe(() => {
@@ -367,7 +365,7 @@ self.onInit = function() {
         );
     }
 
-    function createUserAccount$() {
+    function createUserAccount$(groupContext) {
         return self.ctx.userService.saveUser({
             email: self.ctx.$scope.formData.email,
             authority: 'CUSTOMER_USER',
@@ -383,6 +381,10 @@ self.onInit = function() {
             customMenuId: {
                 id: '7728f1d0-36e8-11f0-9416-e1bdecd1c374'
             }
+        }, {
+            queryParams: {
+                userGroupId: groupContext ? groupContext.userGroupId : null
+            }
         }).pipe(
             rx.map((user) => {
                 if (user && user.id) {
@@ -397,18 +399,7 @@ self.onInit = function() {
         );
     }
 
-    function addUserToGroup$(groupContext, user) {
-        if (!groupContext || !groupContext.userGroupId || !user || !user.id) {
-            return rx.throwError(() => new Error('Missing user group assignment data'));
-        }
-        var userId = user.id.id || user.id;
-        return self.ctx.http.post('/api/entityGroup/' + groupContext.userGroupId + '/entity/' + userId, null).pipe(
-            rx.catchError((error) => {
-                handleSaveError('Fehler beim Zuweisen des Users zur User Group.');
-                return rx.throwError(() => error);
-            })
-        );
-    }
+ 
 
     function handleSaveError(message) {
         saveFailed = true;
