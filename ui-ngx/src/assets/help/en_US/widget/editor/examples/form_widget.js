@@ -127,20 +127,14 @@ self.onInit = function() {
             'TELEMETRY',
             payload
         ).pipe(
-            rx.switchMap(function () {
-                return createUserGroups$();
-            }),
-            rx.switchMap(function () {
-                return createUserAccount$();
-            }),
-            rx.switchMap(function () {
-                return createUserDevices$();
-            })
-        ).subscribe(function () {
+            rx.switchMap(() => createUserGroups$()),
+            rx.switchMap(() => createUserAccount$()),
+            rx.switchMap(() => createUserDevices$())
+        ).subscribe(() => {
             self.ctx.showSuccessToast('Gespeichert', 3000, 'top', 'center', self.ctx.$scope.toastTargetId, true);
             self.ctx.$scope.formSavedPayload = JSON.stringify(self.ctx.$scope.formData, null, 2);
             self.ctx.detectChanges();
-        }, function () {
+        }, () => {
             handleSaveError('Fehler beim Speichern der Telemetrie.');
         });
     };
@@ -186,14 +180,12 @@ self.onInit = function() {
     function createUserGroups$() {
         var groupName = self.ctx.$scope.formData.lastName + ', ' + self.ctx.$scope.formData.firstName;
         return saveEntityGroup({ type: 'USER', name: groupName }).pipe(
-            rx.switchMap(function (userGroup) {
+            rx.switchMap((userGroup) => {
                 var userGroupId = userGroup && userGroup.id ? userGroup.id.id : null;
                 return saveEntityGroupPermission$(userGroupId);
             }),
-            rx.switchMap(function () {
-                return saveEntityGroup({ type: 'ENTITY_VIEW', name: groupName });
-            }),
-            rx.catchError(function () {
+            rx.switchMap(() => saveEntityGroup({ type: 'ENTITY_VIEW', name: groupName })),
+            rx.catchError(() => {
                 handleSaveError('Fehler beim Anlegen der User Group.');
                 return rx.EMPTY;
             })
@@ -206,11 +198,9 @@ self.onInit = function() {
             return rx.of(null);
         }
         return rx.from(meters).pipe(
-            rx.concatMap(function (meter) {
-                return createDeviceForMeter$(meter);
-            }),
+            rx.concatMap((meter) => createDeviceForMeter$(meter)),
             rx.toArray(),
-            rx.catchError(function () {
+            rx.catchError(() => {
                 handleSaveError('Fehler beim Anlegen der Devices.');
                 return rx.EMPTY;
             })
@@ -223,7 +213,7 @@ self.onInit = function() {
             return rx.of(null);
         }
         return self.ctx.deviceService.saveDevice({ name: deviceName, type: '@CMS/Cosem' }).pipe(
-            rx.switchMap(function (device) {
+            rx.switchMap((device) => {
                 var deviceId = device.id && device.id.id ? device.id.id : device.id;
                 var entityId = {
                     entityType: 'DEVICE',
@@ -240,15 +230,11 @@ self.onInit = function() {
                     { key: 'inactivityTimeout', value: 172800000 }
                 ];
                 return self.ctx.attributeService.saveEntityAttributes(entityId, 'SHARED_SCOPE', sharedAttributes).pipe(
-                    rx.switchMap(function () {
-                        return self.ctx.attributeService.saveEntityAttributes(entityId, 'SERVER_SCOPE', serverAttributes);
-                    }),
-                    rx.switchMap(function () {
-                        return linkDeviceToBtcAsset$(entityId);
-                    })
+                    rx.switchMap(() => self.ctx.attributeService.saveEntityAttributes(entityId, 'SERVER_SCOPE', serverAttributes)),
+                    rx.switchMap(() => linkDeviceToBtcAsset$(entityId))
                 );
             }),
-            rx.catchError(function () {
+            rx.catchError(() => {
                 handleSaveError('Fehler beim Anlegen des Devices.');
                 return rx.EMPTY;
             })
@@ -266,7 +252,7 @@ self.onInit = function() {
             type: 'Contains',
             typeGroup: 'COMMON'
         }).pipe(
-            rx.catchError(function () {
+            rx.catchError(() => {
                 handleSaveError('Fehler beim Erstellen der BTC-Asset Beziehung.');
                 return rx.EMPTY;
             })
@@ -290,7 +276,7 @@ self.onInit = function() {
             roleId: roleId
         };
         return self.ctx.http.post('/api/entityGroup/permissions', body).pipe(
-            rx.catchError(function () {
+            rx.catchError(() => {
                 handleSaveError('Fehler beim Setzen der Gruppenberechtigung.');
                 return rx.EMPTY;
             })
@@ -307,7 +293,7 @@ self.onInit = function() {
                 id: '7728f1d0-36e8-11f0-9416-e1bdecd1c374'
             }
         }).pipe(
-            rx.catchError(function () {
+            rx.catchError(() => {
                 handleSaveError('Fehler beim Anlegen des Users.');
                 return rx.EMPTY;
             })
