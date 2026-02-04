@@ -350,19 +350,39 @@ self.onInit = function() {
     }
 
     function createUserAccount$() {
-        return self.ctx.userService.saveUser({
-            email: self.ctx.$scope.formData.email,
-            authority: 'CUSTOMER_USER',
-            firstName: self.ctx.$scope.formData.firstName,
-            lastName: self.ctx.$scope.formData.lastName,
-            customMenuId: {
-                id: '7728f1d0-36e8-11f0-9416-e1bdecd1c374'
-            }
-        }).pipe(
+        return getAuthUser$().pipe(
+            rx.switchMap((authUser) => {
+                if (!authUser || !authUser.customerId) {
+                    return rx.throwError(() => new Error('Missing customer id'));
+                }
+                return self.ctx.userService.saveUser({
+                    email: self.ctx.$scope.formData.email,
+                    authority: 'CUSTOMER_USER',
+                    firstName: self.ctx.$scope.formData.firstName,
+                    lastName: self.ctx.$scope.formData.lastName,
+                    customerId: {
+                        entityType: 'CUSTOMER',
+                        id: authUser.customerId
+                    },
+                    customMenuId: {
+                        id: '7728f1d0-36e8-11f0-9416-e1bdecd1c374'
+                    }
+                });
+            }),
             rx.catchError((error) => {
                 handleSaveError('Fehler beim Anlegen des Users.');
                 return rx.throwError(() => error);
             })
+        );
+    }
+
+    function getAuthUser$() {
+        if (!self.ctx.store || !self.ctx.store.select) {
+            return rx.throwError(() => new Error('Missing auth store'));
+        }
+        return self.ctx.store.select('auth').pipe(
+            rx.take(1),
+            rx.map((authState) => authState ? authState.authUser : null)
         );
     }
 
