@@ -137,7 +137,9 @@ self.onInit = function() {
         ).pipe(
             rx.switchMap(() => createUserGroups$()),
             rx.switchMap((groupContext) => createUserAccount$().pipe(
-                rx.map(() => groupContext)
+                rx.switchMap((user) => addUserToGroup$(groupContext, user).pipe(
+                    rx.map(() => groupContext)
+                ))
             )),
             rx.switchMap((groupContext) => createUserDevices$(groupContext))
         ).subscribe(() => {
@@ -390,6 +392,19 @@ self.onInit = function() {
             }),
             rx.catchError((error) => {
                 handleSaveError('Fehler beim Anlegen des Users.');
+                return rx.throwError(() => error);
+            })
+        );
+    }
+
+    function addUserToGroup$(groupContext, user) {
+        if (!groupContext || !groupContext.userGroupId || !user || !user.id) {
+            return rx.throwError(() => new Error('Missing user group assignment data'));
+        }
+        var userId = user.id.id || user.id;
+        return self.ctx.http.post('/api/entityGroup/' + groupContext.userGroupId + '/entity/' + userId, null).pipe(
+            rx.catchError((error) => {
+                handleSaveError('Fehler beim Zuweisen des Users zur User Group.');
                 return rx.throwError(() => error);
             })
         );
