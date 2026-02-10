@@ -183,9 +183,7 @@ self.onInit = function() {
             melo: '',
             startDate: null,
             endDate: null,
-            ...meter,
-            startDate: meter.startDate ? new Date(meter.startDate) : null,
-            endDate: meter.endDate ? new Date(meter.endDate) : null
+            ...meter
         };
     }
 
@@ -379,8 +377,13 @@ self.onInit = function() {
         );
     }
 
+
+
     function createUserAccount$(groupContext) {
-        return self.ctx.userService.saveUser({
+        //return self.ctx.userService.saveUser({
+        const url = '/api/user?sendActivationMail=true' +
+            '&entityGroupId=' + encodeURIComponent(groupContext.userGroupId);
+        return self.ctx.http.post(url, {
             email: self.ctx.$scope.formData.email,
             authority: 'CUSTOMER_USER',
             firstName: self.ctx.$scope.formData.firstName,
@@ -394,10 +397,6 @@ self.onInit = function() {
             },
             customMenuId: {
                 id: '7728f1d0-36e8-11f0-9416-e1bdecd1c374'
-            }
-        }, true, {
-            queryParams: {
-                userGroupId: groupContext && groupContext.userGroupId ? groupContext.userGroupId.id || groupContext.userGroupId : null
             }
         }).pipe(
             rx.map((user) => {
