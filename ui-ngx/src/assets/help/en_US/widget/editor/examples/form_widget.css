@@ -22,7 +22,7 @@
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.3);
-  z-index: 1000;
+  z-index: 3000;
 }
 
 .meter-dialog {
@@ -36,5 +36,5 @@
   background: #fff;
   padding: 16px;
   border-radius: 4px;
-  z-index: 1001;
+  z-index: 3001;
 }
