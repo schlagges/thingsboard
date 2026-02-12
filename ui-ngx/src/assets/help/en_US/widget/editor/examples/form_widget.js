@@ -196,9 +196,7 @@ self.onInit = function() {
             melo: '',
             startDate: null,
             endDate: null,
-            ...meter,
-            startDate: meter.startDate ? new Date(meter.startDate) : null,
-            endDate: meter.endDate ? new Date(meter.endDate) : null
+            ...meter
         };
     }
 
