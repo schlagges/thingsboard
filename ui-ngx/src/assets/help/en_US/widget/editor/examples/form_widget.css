@@ -1,0 +1,40 @@
+.meter-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.meter-field {
+  flex: 1 1 0;
+}
+
+.meter-summary-line {
+  display: flex;
+  flex: 1 1 auto;
+  gap: 12px;
+}
+
+.meter-col {
+  min-width: 120px;
+}
+
+.meter-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.3);
+  z-index: 3000;
+}
+
+.meter-dialog {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(520px, 90vw);
+  max-height: 80vh;
+  overflow-y: auto;
+  background: #fff;
+  padding: 16px;
+  border-radius: 4px;
+  z-index: 3001;
+}

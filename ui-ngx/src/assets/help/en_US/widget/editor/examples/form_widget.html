@@ -1,0 +1,122 @@
+<div class="mb-2" tb-toast toastTarget="{{toastTargetId}}"></div>
+<form *ngIf="formData" #personForm="ngForm" (submit)="saveForm(personForm)">
+  <div class="mat-content mat-padding flex flex-col">
+    <div class="flex flex-col gap-4">
+      <mat-form-field class="mat-block">
+        <mat-label>Vorname</mat-label>
+        <input matInput required name="firstName" #firstNameField="ngModel" [(ngModel)]="formData.firstName" />
+        <mat-error *ngIf="firstNameField.hasError('required')">
+          Vorname ist erforderlich.
+        </mat-error>
+      </mat-form-field>
+
+      <mat-form-field class="mat-block">
+        <mat-label>Name</mat-label>
+        <input matInput required name="lastName" #lastNameField="ngModel" [(ngModel)]="formData.lastName" />
+        <mat-error *ngIf="lastNameField.hasError('required')">
+          Name ist erforderlich.
+        </mat-error>
+      </mat-form-field>
+
+      <mat-form-field class="mat-block">
+        <mat-label>E-Mail</mat-label>
+        <input matInput required email name="email" #emailField="ngModel" [(ngModel)]="formData.email" />
+        <mat-error *ngIf="emailField.hasError('required')">
+          E-Mail ist erforderlich.
+        </mat-error>
+        <mat-error *ngIf="emailField.hasError('email')">
+          Bitte eine gültige E-Mail angeben.
+        </mat-error>
+      </mat-form-field>
+    </div>
+
+    <div class="mat-title">Zähler</div>
+    <div class="flex flex-col gap-2">
+      <div class="meter-row" *ngFor="let meter of formData.meters; let i = index; trackBy: trackByIndex">
+        <div class="meter-summary-line mat-body-2">
+          <span class="meter-col meter-col-id">{{ meter.meterId }}</span>
+          <span class="meter-col meter-col-medium">{{ meter.medium }}</span>
+          <span class="meter-col meter-col-date">{{ meter.startDate | date:'dd.MM.yyyy' }}</span>
+        </div>
+        <button type="button" mat-icon-button color="primary" (click)="openMeterDialog(i, $event)" aria-label="Zähler bearbeiten">
+          <mat-icon>edit</mat-icon>
+        </button>
+        <button type="button" mat-icon-button color="warn" (click)="removeMeter(i)" aria-label="Zähler löschen">
+          <mat-icon>delete</mat-icon>
+        </button>
+      </div>
+    </div>
+
+    <div class="flex flex-row flex-wrap gap-2 mt-2">
+      <button type="button" mat-stroked-button color="primary"
+              (click)="openMeterDialog(null, $event)">
+        Zähler hinzufügen
+      </button>
+      <span class="flex-1"></span>
+      <button type="button" mat-button (click)="resetForm(personForm)">Zurücksetzen</button>
+      <button [disabled]="personForm.invalid" mat-raised-button color="primary" type="submit">
+        Speichern
+      </button>
+    </div>
+
+    <div class="mt-2" *ngIf="formReport.length">
+      <div class="mat-subheading-2">Statusbericht</div>
+      <pre class="mat-body-2">{{ formReport.join('\n') }}</pre>
+    </div>
+  </div>
+
+  <div class="meter-dialog-backdrop" *ngIf="meterDialogVisible" (click)="closeMeterDialog()"></div>
+  <div class="meter-dialog mat-elevation-z6" *ngIf="meterDialogVisible">
+    <div class="mat-title">{{ meterDialogTitle }}</div>
+    <div class="flex flex-col gap-4 mt-2">
+      <mat-form-field class="mat-block">
+        <mat-label>Zählernummer</mat-label>
+        <input matInput required maxlength="14" name="dialogMeterId" #dialogMeterIdField="ngModel"
+               [(ngModel)]="meterDraft.meterId" />
+        <mat-error *ngIf="dialogMeterIdField.hasError('required')">Pflichtfeld</mat-error>
+        <mat-error *ngIf="isMeterIdDuplicate(meterDraft.meterId, editingMeterIndex)">Zählernummer muss eindeutig sein.</mat-error>
+      </mat-form-field>
+      <mat-form-field class="mat-block">
+        <mat-label>Medium</mat-label>
+        <mat-select required name="dialogMedium" #dialogMediumField="ngModel" [(ngModel)]="meterDraft.medium">
+          <mat-option value="Strom">Strom</mat-option>
+          <mat-option value="Kaltwasser">Kaltwasser</mat-option>
+          <mat-option value="Warmwasser">Warmwasser</mat-option>
+          <mat-option value="Wärme">Wärme</mat-option>
+          <mat-option value="Gas">Gas</mat-option>
+        </mat-select>
+        <mat-error *ngIf="dialogMediumField.hasError('required')">Pflichtfeld</mat-error>
+      </mat-form-field>
+      <mat-form-field class="mat-block">
+        <mat-label>Adresse der Messstelle</mat-label>
+        <input matInput name="dialogMountingAddress" [(ngModel)]="meterDraft.mountingAddress" />
+      </mat-form-field>
+      <mat-form-field class="mat-block">
+        <mat-label>Einbauort des Zählers</mat-label>
+        <input matInput name="dialogMountingLocation" [(ngModel)]="meterDraft.mountingLocation" />
+      </mat-form-field>
+      <mat-form-field class="mat-block">
+        <mat-label>Messlokationsnummer</mat-label>
+        <input matInput name="dialogMelo" [(ngModel)]="meterDraft.melo" />
+      </mat-form-field>
+      <mat-form-field class="mat-block">
+        <mat-label>Startdatum</mat-label>
+        <input matInput required [matDatepicker]="startPicker" name="dialogStartDate"
+               #dialogStartDateField="ngModel" [(ngModel)]="meterDraft.startDate" />
+        <mat-datepicker-toggle matSuffix [for]="startPicker"></mat-datepicker-toggle>
+        <mat-datepicker #startPicker></mat-datepicker>
+        <mat-error *ngIf="dialogStartDateField.hasError('required')">Pflichtfeld</mat-error>
+      </mat-form-field>
+      <mat-form-field class="mat-block">
+        <mat-label>Enddatum (optional)</mat-label>
+        <input matInput [matDatepicker]="endPicker" name="dialogEndDate" [(ngModel)]="meterDraft.endDate" />
+        <mat-datepicker-toggle matSuffix [for]="endPicker"></mat-datepicker-toggle>
+        <mat-datepicker #endPicker></mat-datepicker>
+      </mat-form-field>
+    </div>
+    <div class="flex flex-row justify-end gap-2 mt-4">
+      <button type="button" mat-button (click)="closeMeterDialog()">Abbrechen</button>
+      <button type="button" mat-raised-button color="primary" (click)="saveMeterDialog()">Übernehmen</button>
+    </div>
+  </div>
+</form>
