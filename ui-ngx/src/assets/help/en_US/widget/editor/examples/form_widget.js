@@ -560,10 +560,10 @@ self.onInit = function() {
 
     function extractSelectedUserId() {
         var stateParams = self.ctx.stateController && self.ctx.stateController.getStateParams ? self.ctx.stateController.getStateParams() : null;
-        if (!stateParams || !stateParams.selectedUser) {
+        if (!stateParams || !stateParams.selecteUser) {
             return null;
         }
-        return stateParams.selectedUser.id;
+        return stateParams.selecteUser.id;
     }
 
     function linkUserToBtcAsset$(user) {

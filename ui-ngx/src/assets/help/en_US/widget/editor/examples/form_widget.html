@@ -5,7 +5,7 @@
       <mat-form-field class="mat-block">
         <mat-label>Vorname</mat-label>
         <input matInput required name="firstName" #firstNameField="ngModel" [(ngModel)]="formData.firstName" />
-        <mat-error *ngIf="firstNameField.hasError('required')">
+        <mat-error *ngIf="personForm.submitted && firstNameField.hasError('required')">
           Vorname ist erforderlich.
         </mat-error>
       </mat-form-field>
@@ -13,7 +13,7 @@
       <mat-form-field class="mat-block">
         <mat-label>Name</mat-label>
         <input matInput required name="lastName" #lastNameField="ngModel" [(ngModel)]="formData.lastName" />
-        <mat-error *ngIf="lastNameField.hasError('required')">
+        <mat-error *ngIf="personForm.submitted && lastNameField.hasError('required')">
           Name ist erforderlich.
         </mat-error>
       </mat-form-field>
@@ -21,10 +21,10 @@
       <mat-form-field class="mat-block">
         <mat-label>E-Mail</mat-label>
         <input matInput required email name="email" #emailField="ngModel" [(ngModel)]="formData.email" />
-        <mat-error *ngIf="emailField.hasError('required')">
+        <mat-error *ngIf="personForm.submitted && emailField.hasError('required')">
           E-Mail ist erforderlich.
         </mat-error>
-        <mat-error *ngIf="emailField.hasError('email')">
+        <mat-error *ngIf="personForm.submitted && emailField.hasError('email')">
           Bitte eine gültige E-Mail angeben.
         </mat-error>
       </mat-form-field>
@@ -54,7 +54,7 @@
       </button>
       <span class="flex-1"></span>
       <button type="button" mat-button (click)="resetForm(personForm)">Zurücksetzen</button>
-      <button [disabled]="personForm.invalid" mat-raised-button color="primary" type="submit">
+      <button mat-raised-button color="primary" type="submit">
         {{ selectedUserId ? 'Speichern' : 'Anlegen' }}
       </button>
     </div>
